@@ -510,8 +510,11 @@ elif page == "📈 Model Comparison":
             st.markdown("**Confusion Matrix per Model**")
             selected_cm_model = st.selectbox("Select Model for Confusion Matrix", list(models.keys()), key="cm_model")
 
-            # Load the held-out test dataset
             test_data = pd.read_csv("output/test_data.csv")
+
+            # Remove any incomplete/non-finite test rows
+            test_data = test_data.replace([np.inf, -np.inf], np.nan)
+            test_data = test_data.dropna(subset=FEATURES + [TARGET]).copy()
 
             X_test = test_data[FEATURES]
             y_test = test_data[TARGET].astype(int)
