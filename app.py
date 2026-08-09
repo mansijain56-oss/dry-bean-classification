@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
 import os
+from datetime import datetime
 
 from sklearn.metrics import (
     accuracy_score,
@@ -68,6 +69,14 @@ st.markdown("""
         margin: 15px 0;
     }
 
+    .welcome-box {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        padding: 22px;
+        border-radius: 14px;
+        color: white;
+        margin-bottom: 20px;
+    }
+
     .section-header {
         border-left: 5px solid #667eea;
         padding-left: 12px;
@@ -75,8 +84,27 @@ st.markdown("""
         font-size: 1.2rem;
         font-weight: 600;
     }
+
+    .info-box {
+        padding: 15px;
+        border-radius: 10px;
+        background: #f5f7fb;
+        margin: 10px 0;
+    }
 </style>
 """, unsafe_allow_html=True)
+
+
+# ==========================================================
+# SESSION / USER INFORMATION
+# ==========================================================
+
+if "user_name" not in st.session_state:
+    st.session_state.user_name = ""
+
+current_datetime = datetime.now()
+current_date = current_datetime.strftime("%d %B %Y")
+current_time = current_datetime.strftime("%I:%M %p")
 
 
 # ==========================================================
@@ -89,7 +117,28 @@ st.sidebar.markdown(
 )
 
 st.sidebar.title("🌱 Dry Bean Classifier")
-st.sidebar.caption("AIMLCZG565 – Machine Learning | Assignment 2")
+st.sidebar.caption(
+    "AIMLCZG565 – Machine Learning | Assignment 2"
+)
+
+st.sidebar.divider()
+
+user_name = st.sidebar.text_input(
+    "👤 Your Name",
+    value=st.session_state.user_name,
+    placeholder="Enter your name"
+)
+
+st.session_state.user_name = user_name.strip()
+
+if st.session_state.user_name:
+    st.sidebar.success(
+        f"Welcome, {st.session_state.user_name}!"
+    )
+
+st.sidebar.caption(f"📅 {current_date}")
+st.sidebar.caption(f"🕐 {current_time}")
+
 st.sidebar.divider()
 
 page = st.sidebar.radio(
@@ -140,10 +189,6 @@ TARGET = "Class"
 
 @st.cache_data
 def load_dataset():
-    """
-    Load the dataset from the repository itself.
-    Keeping the file local avoids an unnecessary external dependency.
-    """
     return pd.read_excel(
         "Dry_Bean_Dataset.xlsx",
         engine="openpyxl"
@@ -183,16 +228,26 @@ def load_models():
     return models, scaler, encoder
 
 
-# Load application resources
-df = load_dataset()
-models, scaler, encoder = load_models()
+# ==========================================================
+# LOAD APPLICATION RESOURCES
+# ==========================================================
+
+try:
+    df = load_dataset()
+    models, scaler, encoder = load_models()
+except Exception as e:
+    st.error(f"Unable to load project resources: {e}")
+    st.stop()
 
 
 # ==========================================================
 # BASIC VALIDATION
 # ==========================================================
 
-missing_features = [feature for feature in FEATURES if feature not in df.columns]
+missing_features = [
+    feature for feature in FEATURES
+    if feature not in df.columns
+]
 
 if missing_features or TARGET not in df.columns:
     st.error(
@@ -209,23 +264,64 @@ if missing_features or TARGET not in df.columns:
 st.sidebar.markdown("**Dataset Stats**")
 st.sidebar.markdown(f"- Records: **{df.shape[0]:,}**")
 st.sidebar.markdown(f"- Features: **{len(FEATURES)}**")
-st.sidebar.markdown(f"- Classes: **{df[TARGET].nunique()}**")
-st.sidebar.markdown(f"- Models: **{len(models)}**")
+st.sidebar.markdown(
+    f"- Classes: **{df[TARGET].nunique()}**"
+)
+st.sidebar.markdown(
+    f"- Models: **{len(models)}**"
+)
 
 
 # ==========================================================
-# EVALUATION FUNCTION
+# HELPER FUNCTIONS
 # ==========================================================
+
+def get_model_comparison():
+    """Load and validate model comparison results."""
+    comparison = pd.read_csv(
+        "output/model_comparison.csv"
+    )
+
+    required_columns = [
+        "Model",
+        "Accuracy",
+        "Precision",
+        "Recall",
+        "F1 Score",
+        "MCC",
+        "ROC-AUC"
+    ]
+
+    missing = [
+        column
+        for column in required_columns
+        if column not in comparison.columns
+    ]
+
+    if missing:
+        raise ValueError(
+            "Missing columns in model_comparison.csv: "
+            + ", ".join(missing)
+        )
+
+    for metric in required_columns[1:]:
+        comparison[metric] = pd.to_numeric(
+            comparison[metric],
+            errors="coerce"
+        )
+
+    return comparison
+
 
 def evaluate_model(model, X_test, y_test):
-    """
-    Calculate standard classification metrics.
-    Kept as a reusable helper for the project.
-    """
+    """Calculate standard classification metrics."""
     y_pred = model.predict(X_test)
 
     metrics = {
-        "Accuracy": accuracy_score(y_test, y_pred),
+        "Accuracy": accuracy_score(
+            y_test,
+            y_pred
+        ),
         "Precision": precision_score(
             y_test,
             y_pred,
@@ -244,14 +340,24 @@ def evaluate_model(model, X_test, y_test):
             average="weighted",
             zero_division=0
         ),
-        "MCC": matthews_corrcoef(y_test, y_pred)
+        "MCC": matthews_corrcoef(
+            y_test,
+            y_pred
+        )
     }
 
     if hasattr(model, "predict_proba"):
+
         y_prob = model.predict_proba(X_test)
 
-        classes = np.arange(len(encoder.classes_))
-        y_bin = label_binarize(y_test, classes=classes)
+        classes = np.arange(
+            len(encoder.classes_)
+        )
+
+        y_bin = label_binarize(
+            y_test,
+            classes=classes
+        )
 
         try:
             metrics["ROC-AUC"] = roc_auc_score(
@@ -275,9 +381,27 @@ def evaluate_model(model, X_test, y_test):
 if page == "🏠 Home":
 
     st.title("🌱 Dry Bean Classification System")
+
+    if st.session_state.user_name:
+        display_name = st.session_state.user_name
+    else:
+        display_name = "there"
+
+    st.markdown(
+        f"""
+        <div class="welcome-box">
+            <h2>👋 Welcome, {display_name}!</h2>
+            <p>Interactive Dry Bean Classification application</p>
+            <p>📅 {current_date} &nbsp; | &nbsp; 🕐 {current_time}</p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
     st.markdown(
         "##### BITS Pilani WILP · AIMLCZG565 Machine Learning · Assignment 2"
     )
+
     st.divider()
 
     # Dynamic dashboard metrics
@@ -309,11 +433,54 @@ if page == "🏠 Home":
 
     st.divider()
 
+    # Best model summary
+    try:
+        comparison = get_model_comparison()
+
+        best_accuracy = comparison["Accuracy"].max()
+
+        best_models = comparison.loc[
+            comparison["Accuracy"] == best_accuracy,
+            "Model"
+        ].tolist()
+
+        best_auc = comparison["ROC-AUC"].max()
+
+        best_auc_models = comparison.loc[
+            comparison["ROC-AUC"] == best_auc,
+            "Model"
+        ].tolist()
+
+        c1, c2 = st.columns(2)
+
+        with c1:
+            st.success(
+                f"🏆 Highest Accuracy: "
+                f"**{', '.join(best_models)}** "
+                f"({best_accuracy:.4f})"
+            )
+
+        with c2:
+            st.info(
+                f"📊 Highest ROC-AUC: "
+                f"**{', '.join(best_auc_models)}** "
+                f"({best_auc:.4f})"
+            )
+
+    except Exception:
+        st.info(
+            "Model comparison results are available "
+            "on the Model Comparison page."
+        )
+
+    st.divider()
+
     col1, col2 = st.columns(2)
 
     with col1:
+
         st.markdown(
-            '<div class="section-header">🎯 Objectives</div>',
+            '<div class="section-header">🎯 Project Objectives</div>',
             unsafe_allow_html=True
         )
 
@@ -321,6 +488,7 @@ if page == "🏠 Home":
         - Explore and analyze the Dry Bean Dataset
         - Train and evaluate five ML classifiers
         - Compare model performance across six metrics
+        - Analyze feature importance
         - Deploy an interactive prediction interface
         """)
 
@@ -333,6 +501,7 @@ if page == "🏠 Home":
             st.markdown(f"- {model_name}")
 
     with col2:
+
         st.markdown(
             '<div class="section-header">📊 Class Distribution</div>',
             unsafe_allow_html=True
@@ -341,7 +510,11 @@ if page == "🏠 Home":
         counts = df[TARGET].value_counts()
 
         fig, ax = plt.subplots(figsize=(6, 4))
-        colors = sns.color_palette("viridis", len(counts))
+
+        colors = sns.color_palette(
+            "viridis",
+            len(counts)
+        )
 
         ax.barh(
             counts.index,
@@ -358,52 +531,24 @@ if page == "🏠 Home":
 
     st.divider()
 
-    # Dynamic best-model message with tie handling
-    try:
-        comparison = pd.read_csv(
-            "output/model_comparison.csv"
-        )
+    st.markdown(
+        '<div class="section-header">🔄 Project Workflow</div>',
+        unsafe_allow_html=True
+    )
 
-        if "Accuracy" in comparison.columns and "Model" in comparison.columns:
+    workflow = """
+    Dataset → EDA → Preprocessing → Train/Test Split →
+    Feature Scaling → Model Training → Hyperparameter Tuning →
+    Evaluation → Model Comparison → Feature Importance →
+    Streamlit Deployment
+    """
 
-            comparison["Accuracy"] = pd.to_numeric(
-                comparison["Accuracy"],
-                errors="coerce"
-            )
+    st.info(workflow)
 
-            comparison = comparison.dropna(
-                subset=["Accuracy"]
-            )
-
-            if not comparison.empty:
-                best_accuracy = comparison["Accuracy"].max()
-
-                best_models = comparison.loc[
-                    comparison["Accuracy"] == best_accuracy,
-                    "Model"
-                ].tolist()
-
-                if len(best_models) == 1:
-                    st.success(
-                        f"🏆 {best_models[0]} achieved the highest "
-                        f"accuracy ({best_accuracy:.4f}) among all models."
-                    )
-                else:
-                    st.success(
-                        f"🏆 {', '.join(best_models)} achieved the highest "
-                        f"accuracy ({best_accuracy:.4f}) among all models."
-                    )
-            else:
-                st.info(
-                    "Model comparison results are available on the "
-                    "Model Comparison page."
-                )
-
-    except Exception:
-        st.info(
-            "Model comparison results are available on the "
-            "Model Comparison page."
-        )
+    st.caption(
+        "The detailed implementation code is maintained in the "
+        "project notebooks and app.py repository files."
+    )
 
 
 # ==========================================================
@@ -420,7 +565,71 @@ elif page == "📊 Dataset Explorer":
     c1.metric("Rows", f"{df.shape[0]:,}")
     c2.metric("Columns", df.shape[1])
     c3.metric("Features", len(FEATURES))
-    c4.metric("Classes", df[TARGET].nunique())
+    c4.metric(
+        "Classes",
+        df[TARGET].nunique()
+    )
+
+    st.divider()
+
+    # Dataset quality summary
+    st.markdown(
+        '<div class="section-header">🔎 Dataset Quality</div>',
+        unsafe_allow_html=True
+    )
+
+    missing_values = int(
+        df.isnull().sum().sum()
+    )
+
+    duplicate_rows = int(
+        df.duplicated().sum()
+    )
+
+    numeric_features = df[
+        FEATURES
+    ].apply(
+        pd.to_numeric,
+        errors="coerce"
+    )
+
+    infinite_values = int(
+        np.isinf(
+            numeric_features.to_numpy()
+        ).sum()
+    )
+
+    q1, q2, q3 = st.columns(3)
+
+    q1.metric(
+        "Missing Values",
+        f"{missing_values:,}"
+    )
+
+    q2.metric(
+        "Duplicate Rows",
+        f"{duplicate_rows:,}"
+    )
+
+    q3.metric(
+        "Infinite Values",
+        f"{infinite_values:,}"
+    )
+
+    if missing_values == 0 and duplicate_rows == 0:
+        st.success(
+            "✅ Dataset quality check passed: "
+            "no missing values or duplicate rows detected."
+        )
+    elif missing_values == 0:
+        st.warning(
+            f"⚠️ No missing values detected, but "
+            f"{duplicate_rows:,} duplicate rows were found."
+        )
+    else:
+        st.warning(
+            "⚠️ The dataset contains missing or duplicate values."
+        )
 
     st.divider()
 
@@ -452,7 +661,9 @@ elif page == "📊 Dataset Explorer":
 
     with tab2:
 
-        fig, ax = plt.subplots(figsize=(9, 5))
+        fig, ax = plt.subplots(
+            figsize=(9, 5)
+        )
 
         sns.countplot(
             data=df,
@@ -462,14 +673,22 @@ elif page == "📊 Dataset Explorer":
             ax=ax
         )
 
-        ax.set_title("Bean Class Distribution")
-        ax.tick_params(axis="x", rotation=30)
+        ax.set_title(
+            "Bean Class Distribution"
+        )
+
+        ax.tick_params(
+            axis="x",
+            rotation=30
+        )
 
         for patch in ax.patches:
+
             ax.annotate(
                 f"{int(patch.get_height())}",
                 (
-                    patch.get_x() + patch.get_width() / 2,
+                    patch.get_x()
+                    + patch.get_width() / 2,
                     patch.get_height()
                 ),
                 ha="center",
@@ -483,7 +702,9 @@ elif page == "📊 Dataset Explorer":
 
     with tab3:
 
-        fig, ax = plt.subplots(figsize=(12, 8))
+        fig, ax = plt.subplots(
+            figsize=(12, 8)
+        )
 
         sns.heatmap(
             df[FEATURES].corr(),
@@ -493,7 +714,9 @@ elif page == "📊 Dataset Explorer":
             ax=ax
         )
 
-        ax.set_title("Feature Correlation Heatmap")
+        ax.set_title(
+            "Feature Correlation Heatmap"
+        )
 
         plt.tight_layout()
         st.pyplot(fig)
@@ -506,7 +729,9 @@ elif page == "📊 Dataset Explorer":
             FEATURES
         )
 
-        fig, ax = plt.subplots(figsize=(9, 4))
+        fig, ax = plt.subplots(
+            figsize=(9, 4)
+        )
 
         for cls in df[TARGET].unique():
 
@@ -522,11 +747,18 @@ elif page == "📊 Dataset Explorer":
                 label=cls
             )
 
-        ax.set_xlabel(selected_feature)
-        ax.set_ylabel("Frequency")
+        ax.set_xlabel(
+            selected_feature
+        )
+
+        ax.set_ylabel(
+            "Frequency"
+        )
+
         ax.set_title(
             f"Distribution of {selected_feature} by Class"
         )
+
         ax.legend(fontsize=7)
 
         plt.tight_layout()
@@ -538,20 +770,20 @@ elif page == "📊 Dataset Explorer":
         feature_info = pd.DataFrame({
             "Feature": FEATURES,
             "Min": [
-                round(df[feature].min(), 4)
-                for feature in FEATURES
+                round(df[f].min(), 4)
+                for f in FEATURES
             ],
             "Max": [
-                round(df[feature].max(), 4)
-                for feature in FEATURES
+                round(df[f].max(), 4)
+                for f in FEATURES
             ],
             "Mean": [
-                round(df[feature].mean(), 4)
-                for feature in FEATURES
+                round(df[f].mean(), 4)
+                for f in FEATURES
             ],
             "Median": [
-                round(df[feature].median(), 4)
-                for feature in FEATURES
+                round(df[f].median(), 4)
+                for f in FEATURES
             ]
         })
 
@@ -568,9 +800,13 @@ elif page == "📊 Dataset Explorer":
 elif page == "🤖 Single Prediction":
 
     st.title("🤖 Single Bean Prediction")
+
     st.markdown(
-        "Enter feature values to predict the bean variety."
+        "Enter feature values to predict the bean variety. "
+        "The saved StandardScaler is applied automatically "
+        "before prediction."
     )
+
     st.divider()
 
     with st.expander(
@@ -588,7 +824,9 @@ elif page == "🤖 Single Prediction":
 
                 value = st.number_input(
                     feature,
-                    value=float(df[feature].median()),
+                    value=float(
+                        df[feature].median()
+                    ),
                     format="%.4f"
                 )
 
@@ -609,7 +847,6 @@ elif page == "🤖 Single Prediction":
             columns=FEATURES
         )
 
-        # Ensure valid numeric values
         input_df = input_df.replace(
             [np.inf, -np.inf],
             np.nan
@@ -624,9 +861,15 @@ elif page == "🤖 Single Prediction":
 
         else:
 
-            scaled = scaler.transform(input_df)
+            scaled = scaler.transform(
+                input_df
+            )
 
-            pred = models[selected_model].predict(
+            model = models[
+                selected_model
+            ]
+
+            pred = model.predict(
                 scaled
             )[0]
 
@@ -642,20 +885,13 @@ elif page == "🤖 Single Prediction":
             )
 
             if hasattr(
-                models[selected_model],
+                model,
                 "predict_proba"
             ):
 
-                probability = models[
-                    selected_model
-                ].predict_proba(scaled)[0]
-
-                top_conf = probability.max() * 100
-
-                st.metric(
-                    "Top Confidence",
-                    f"{top_conf:.1f}%"
-                )
+                probability = model.predict_proba(
+                    scaled
+                )[0]
 
                 prob_df = pd.DataFrame({
                     "Bean Variety": encoder.classes_,
@@ -665,12 +901,39 @@ elif page == "🤖 Single Prediction":
                     ascending=False
                 )
 
+                top_confidence = (
+                    prob_df.iloc[0]["Probability"]
+                    * 100
+                )
+
+                st.metric(
+                    "Top Confidence",
+                    f"{top_confidence:.1f}%"
+                )
+
+                st.markdown(
+                    "**Top 3 Predictions**"
+                )
+
+                top3 = prob_df.head(3).copy()
+
+                top3["Probability"] = (
+                    top3["Probability"]
+                    .map(lambda x: f"{x:.2%}")
+                )
+
+                st.dataframe(
+                    top3,
+                    use_container_width=True,
+                    hide_index=True
+                )
+
                 col1, col2 = st.columns(2)
 
                 with col1:
 
                     st.markdown(
-                        "**Prediction Probabilities**"
+                        "**All Prediction Probabilities**"
                     )
 
                     st.dataframe(
@@ -706,10 +969,14 @@ elif page == "🤖 Single Prediction":
                         color=bar_colors
                     )
 
-                    ax.set_xlabel("Probability")
+                    ax.set_xlabel(
+                        "Probability"
+                    )
+
                     ax.set_title(
                         "Confidence per Class"
                     )
+
                     ax.invert_yaxis()
 
                     plt.tight_layout()
@@ -728,6 +995,26 @@ elif page == "📁 Batch Prediction":
     st.markdown(
         "Upload a CSV with the 16 feature columns to "
         "predict all records at once."
+    )
+
+    st.divider()
+
+    # Sample template
+    sample_df = df[FEATURES].head(3).copy()
+
+    st.download_button(
+        "⬇️ Download Sample CSV Template",
+        data=sample_df.to_csv(
+            index=False
+        ).encode("utf-8"),
+        file_name="DryBean_Sample_Template.csv",
+        mime="text/csv",
+        help="Use this file as a template for batch prediction."
+    )
+
+    st.caption(
+        "The uploaded CSV must contain all 16 feature columns "
+        "with the same column names as the template."
     )
 
     st.divider()
@@ -752,9 +1039,13 @@ elif page == "📁 Batch Prediction":
 
         try:
 
-            batch = pd.read_csv(uploaded)
+            batch = pd.read_csv(
+                uploaded
+            )
 
-            st.markdown("**Uploaded Data Preview**")
+            st.markdown(
+                "**Uploaded Data Preview**"
+            )
 
             st.dataframe(
                 batch.head(),
@@ -779,9 +1070,14 @@ elif page == "📁 Batch Prediction":
                         + ", ".join(missing)
                     )
 
+                elif len(batch) == 0:
+
+                    st.error(
+                        "The uploaded CSV contains no records."
+                    )
+
                 else:
 
-                    # Convert feature columns to numeric
                     batch[FEATURES] = batch[
                         FEATURES
                     ].apply(
@@ -789,7 +1085,6 @@ elif page == "📁 Batch Prediction":
                         errors="coerce"
                     )
 
-                    # Replace infinite values
                     batch = batch.replace(
                         [np.inf, -np.inf],
                         np.nan
@@ -812,12 +1107,6 @@ elif page == "📁 Batch Prediction":
                               "and upload it again."
                         )
 
-                    elif len(batch) == 0:
-
-                        st.error(
-                            "The uploaded CSV contains no records."
-                        )
-
                     else:
 
                         scaled = scaler.transform(
@@ -826,7 +1115,9 @@ elif page == "📁 Batch Prediction":
 
                         prediction = models[
                             selected_model
-                        ].predict(scaled)
+                        ].predict(
+                            scaled
+                        )
 
                         prediction = encoder.inverse_transform(
                             prediction
@@ -930,11 +1221,9 @@ elif page == "📈 Model Comparison":
 
     try:
 
-        comparison = pd.read_csv(
-            "output/model_comparison.csv"
-        )
+        comparison = get_model_comparison()
 
-        required_metrics = [
+        metrics = [
             "Accuracy",
             "Precision",
             "Recall",
@@ -943,39 +1232,6 @@ elif page == "📈 Model Comparison":
             "ROC-AUC"
         ]
 
-        missing_metrics = [
-            metric
-            for metric in required_metrics
-            if metric not in comparison.columns
-        ]
-
-        if "Model" not in comparison.columns:
-
-            st.error(
-                "The model comparison file does not contain "
-                "a 'Model' column."
-            )
-            st.stop()
-
-        if missing_metrics:
-
-            st.error(
-                "Missing metric columns: "
-                + ", ".join(missing_metrics)
-            )
-            st.stop()
-
-        metrics = required_metrics
-
-        # Ensure metric columns are numeric
-        for metric in metrics:
-
-            comparison[metric] = pd.to_numeric(
-                comparison[metric],
-                errors="coerce"
-            )
-
-        # Remove invalid rows only if necessary
         comparison = comparison.dropna(
             subset=["Model", "Accuracy"]
         ).copy()
@@ -987,16 +1243,17 @@ elif page == "📈 Model Comparison":
             )
             st.stop()
 
-        # Top model cards
+        # Best accuracy
         best_accuracy = comparison[
             "Accuracy"
         ].max()
 
-        best_models = comparison.loc[
+        best_accuracy_models = comparison.loc[
             comparison["Accuracy"] == best_accuracy,
             "Model"
         ].tolist()
 
+        # Best F1
         best_f1 = comparison[
             "F1 Score"
         ].max()
@@ -1006,26 +1263,46 @@ elif page == "📈 Model Comparison":
             "Model"
         ].tolist()
 
+        # Best ROC-AUC
+        best_auc = comparison[
+            "ROC-AUC"
+        ].max()
+
+        best_auc_models = comparison.loc[
+            comparison["ROC-AUC"] == best_auc,
+            "Model"
+        ].tolist()
+
         c1, c2, c3 = st.columns(3)
 
         c1.metric(
-            "🏆 Best Accuracy Model",
-            ", ".join(best_models)
-        )
-
-        c2.metric(
-            "🎯 Best Accuracy",
+            "🏆 Best Accuracy",
             f"{best_accuracy:.4f}"
         )
 
-        c3.metric(
+        c2.metric(
             "📊 Best F1 Score",
             f"{best_f1:.4f}"
         )
 
-        st.caption(
-            "Best F1 Score: "
-            + ", ".join(best_f1_models)
+        c3.metric(
+            "📈 Best ROC-AUC",
+            f"{best_auc:.4f}"
+        )
+
+        st.markdown(
+            f"**Best Accuracy Model(s):** "
+            f"{', '.join(best_accuracy_models)}"
+        )
+
+        st.markdown(
+            f"**Best F1 Model(s):** "
+            f"{', '.join(best_f1_models)}"
+        )
+
+        st.markdown(
+            f"**Best ROC-AUC Model(s):** "
+            f"{', '.join(best_auc_models)}"
         )
 
         st.divider()
@@ -1070,14 +1347,24 @@ elif page == "📈 Model Comparison":
                 colormap="viridis"
             )
 
-            ax.set_ylabel("Score")
-            ax.set_ylim(0.85, 1.0)
+            ax.set_ylabel(
+                "Score"
+            )
+
+            ax.set_ylim(
+                0.85,
+                1.0
+            )
+
             ax.legend(
                 loc="lower right",
                 fontsize=8
             )
 
-            plt.xticks(rotation=20)
+            plt.xticks(
+                rotation=20
+            )
+
             plt.tight_layout()
 
             st.pyplot(fig)
@@ -1093,7 +1380,9 @@ elif page == "📈 Model Comparison":
                 "MCC"
             ]
 
-            N = len(radar_metrics)
+            N = len(
+                radar_metrics
+            )
 
             angles = [
                 n / float(N) * 2 * np.pi
@@ -1104,7 +1393,9 @@ elif page == "📈 Model Comparison":
 
             fig, ax = plt.subplots(
                 figsize=(7, 7),
-                subplot_kw=dict(polar=True)
+                subplot_kw=dict(
+                    polar=True
+                )
             )
 
             colors = sns.color_palette(
@@ -1184,10 +1475,22 @@ elif page == "📈 Model Comparison":
                 "output/test_data.csv"
             )
 
-            # Clean invalid values safely
             test_data = test_data.replace(
                 [np.inf, -np.inf],
                 np.nan
+            )
+
+            # Make sure all test columns are numeric
+            test_data[FEATURES] = test_data[
+                FEATURES
+            ].apply(
+                pd.to_numeric,
+                errors="coerce"
+            )
+
+            test_data[TARGET] = pd.to_numeric(
+                test_data[TARGET],
+                errors="coerce"
             )
 
             test_data = test_data.dropna(
@@ -1203,23 +1506,6 @@ elif page == "📈 Model Comparison":
 
             else:
 
-                # Ensure numeric test values
-                test_data[FEATURES] = test_data[
-                    FEATURES
-                ].apply(
-                    pd.to_numeric,
-                    errors="coerce"
-                )
-
-                test_data[TARGET] = pd.to_numeric(
-                    test_data[TARGET],
-                    errors="coerce"
-                )
-
-                test_data = test_data.dropna(
-                    subset=FEATURES + [TARGET]
-                )
-
                 X_test = test_data[
                     FEATURES
                 ]
@@ -1232,8 +1518,6 @@ elif page == "📈 Model Comparison":
                     selected_cm_model
                 ].predict(X_test)
 
-                # Explicit labels guarantee a stable
-                # 7 x 7 confusion matrix
                 labels = np.arange(
                     len(encoder.classes_)
                 )
@@ -1276,7 +1560,6 @@ elif page == "📈 Model Comparison":
                 st.pyplot(fig_cm)
                 plt.close(fig_cm)
 
-                # Classification report
                 st.markdown(
                     "**Classification Report**"
                 )
@@ -1334,6 +1617,15 @@ elif page == "🌳 Feature Importance":
         len(importance) + 1
     )
 
+    # Top N selector
+    top_n = st.slider(
+        "Select number of features to display",
+        min_value=5,
+        max_value=len(FEATURES),
+        value=10,
+        step=1
+    )
+
     col1, col2 = st.columns(2)
 
     with col1:
@@ -1344,8 +1636,12 @@ elif page == "🌳 Feature Importance":
 
         st.dataframe(
             importance[
-                ["Rank", "Feature", "Importance"]
-            ]
+                [
+                    "Rank",
+                    "Feature",
+                    "Importance"
+                ]
+            ].head(top_n)
             .style
             .format({
                 "Importance": "{:.4f}"
@@ -1359,18 +1655,25 @@ elif page == "🌳 Feature Importance":
 
     with col2:
 
+        top_importance = importance.head(
+            top_n
+        ).sort_values(
+            "Importance",
+            ascending=True
+        )
+
         fig, ax = plt.subplots(
             figsize=(7, 6)
         )
 
         colors = sns.color_palette(
             "viridis",
-            len(importance)
+            len(top_importance)
         )
 
         ax.barh(
-            importance["Feature"],
-            importance["Importance"],
+            top_importance["Feature"],
+            top_importance["Importance"],
             color=colors
         )
 
@@ -1379,10 +1682,8 @@ elif page == "🌳 Feature Importance":
         )
 
         ax.set_title(
-            "Random Forest Feature Importance"
+            f"Top {top_n} Random Forest Features"
         )
-
-        ax.invert_yaxis()
 
         plt.tight_layout()
 
@@ -1391,7 +1692,6 @@ elif page == "🌳 Feature Importance":
 
     st.divider()
 
-    # Cumulative importance
     importance["Cumulative"] = (
         importance["Importance"].cumsum()
     )
@@ -1488,6 +1788,82 @@ Accuracy, Precision, Recall, F1, MCC, ROC-AUC
 | Programme | M.Tech AI & ML |
 | University | BITS Pilani WILP |
 """)
+
+    st.divider()
+
+    st.markdown(
+        '<div class="section-header">🔄 Methodology</div>',
+        unsafe_allow_html=True
+    )
+
+    st.info("""
+    **Dataset**
+    → **EDA**
+    → **Preprocessing**
+    → **Train/Test Split**
+    → **Feature Scaling**
+    → **Model Training**
+    → **Hyperparameter Tuning**
+    → **Evaluation**
+    → **Model Comparison**
+    → **Feature Importance**
+    → **Streamlit Deployment**
+    """)
+
+    st.markdown(
+        '<div class="section-header">🛠 Technologies</div>',
+        unsafe_allow_html=True
+    )
+
+    tech1, tech2, tech3, tech4 = st.columns(4)
+
+    tech1.metric("Python", "ML")
+    tech2.metric("Scikit-learn", "Models")
+    tech3.metric("Streamlit", "Deployment")
+    tech4.metric("Joblib", "Model Saving")
+
+    st.divider()
+
+    st.markdown(
+        '<div class="section-header">💻 Project Code</div>',
+        unsafe_allow_html=True
+    )
+
+    st.markdown("""
+    The complete implementation is maintained in the GitHub repository,
+    including the training notebooks, Streamlit application,
+    saved model files and generated output files.
+    """)
+
+    if st.session_state.user_name:
+
+        st.markdown(
+            '<div class="section-header">👤 Session Information</div>',
+            unsafe_allow_html=True
+        )
+
+        session_info = pd.DataFrame({
+            "Information": [
+                "User",
+                "Session Date",
+                "Session Time",
+                "Application",
+                "Course"
+            ],
+            "Value": [
+                st.session_state.user_name,
+                current_date,
+                current_time,
+                "Dry Bean Classification",
+                "AIMLCZG565 – Machine Learning"
+            ]
+        })
+
+        st.dataframe(
+            session_info,
+            use_container_width=True,
+            hide_index=True
+        )
 
     st.divider()
 
