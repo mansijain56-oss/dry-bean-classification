@@ -980,12 +980,12 @@ elif page == "🤖 Single Prediction":
                         if variety == bean
                         else "#667eea"
                         for variety in prob_df[
-                            "Bean Variety"
+                            "Bean Class"
                         ]
                     ]
 
                     ax.barh(
-                        prob_df["Bean Variety"],
+                        prob_df["Bean Class"],
                         prob_df["Probability"],
                         color=bar_colors
                     )
