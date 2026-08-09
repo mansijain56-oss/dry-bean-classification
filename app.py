@@ -6,6 +6,7 @@ import seaborn as sns
 import joblib
 import os
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from sklearn.metrics import (
     accuracy_score,
@@ -91,6 +92,26 @@ st.markdown("""
         background: #f5f7fb;
         margin: 10px 0;
     }
+
+    .subtle-note {
+        color: #64748b;
+        font-size: 0.88rem;
+        margin-top: -6px;
+    }
+
+    .result-label {
+        font-size: 0.9rem;
+        color: #475569;
+        margin-bottom: 2px;
+    }
+
+    div[data-testid="stMetric"] {
+        padding: 6px 4px;
+    }
+
+    .stDownloadButton button {
+        font-weight: 600;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -102,7 +123,7 @@ st.markdown("""
 if "user_name" not in st.session_state:
     st.session_state.user_name = ""
 
-current_datetime = datetime.now()
+current_datetime = datetime.now(ZoneInfo("Asia/Kolkata"))
 current_date = current_datetime.strftime("%d %B %Y")
 current_time = current_datetime.strftime("%I:%M %p")
 
@@ -120,6 +141,7 @@ st.sidebar.title("🌱 Dry Bean Classifier")
 st.sidebar.caption(
     "AIMLCZG565 – Machine Learning | Assignment 2"
 )
+st.sidebar.caption("Application version: Final")
 
 st.sidebar.divider()
 
@@ -618,8 +640,7 @@ elif page == "📊 Dataset Explorer":
 
     if missing_values == 0 and duplicate_rows == 0:
         st.success(
-            "✅ Dataset quality check passed: "
-            "no missing values or duplicate rows detected."
+            "✅ Dataset quality check passed: no missing or infinite values detected."
         )
     elif missing_values == 0:
         st.warning(
@@ -879,7 +900,7 @@ elif page == "🤖 Single Prediction":
 
             st.markdown(
                 f'<div class="prediction-box">'
-                f'🌱 Predicted Bean: {bean}'
+                f'🌱 Predicted Bean Class: {bean}'
                 f'</div>',
                 unsafe_allow_html=True
             )
@@ -894,7 +915,7 @@ elif page == "🤖 Single Prediction":
                 )[0]
 
                 prob_df = pd.DataFrame({
-                    "Bean Variety": encoder.classes_,
+                    "Bean Class": encoder.classes_,
                     "Probability": probability
                 }).sort_values(
                     "Probability",
@@ -907,12 +928,12 @@ elif page == "🤖 Single Prediction":
                 )
 
                 st.metric(
-                    "Top Confidence",
+                    "Prediction Confidence",
                     f"{top_confidence:.1f}%"
                 )
 
                 st.markdown(
-                    "**Top 3 Predictions**"
+                    "**Top 3 Predicted Classes**"
                 )
 
                 top3 = prob_df.head(3).copy()
@@ -974,7 +995,7 @@ elif page == "🤖 Single Prediction":
                     )
 
                     ax.set_title(
-                        "Confidence per Class"
+                        "Prediction Probability by Bean Class"
                     )
 
                     ax.invert_yaxis()
@@ -1145,8 +1166,8 @@ elif page == "📁 Batch Prediction":
                         )
 
                         summary.columns = [
-                            "Bean Variety",
-                            "Count"
+                            "Bean Class",
+                            "Number of Records"
                         ]
 
                         col1, col2 = st.columns(2)
@@ -1160,27 +1181,39 @@ elif page == "📁 Batch Prediction":
 
                         with col2:
 
+                            chart_summary = summary.sort_values(
+                                "Number of Records",
+                                ascending=True
+                            )
+
                             fig, ax = plt.subplots(
-                                figsize=(5, 4)
+                                figsize=(5.5, 4)
                             )
 
-                            pie_colors = sns.color_palette(
-                                "viridis",
-                                len(summary)
+                            ax.barh(
+                                chart_summary["Bean Class"],
+                                chart_summary["Number of Records"],
+                                color=sns.color_palette(
+                                    "viridis",
+                                    len(chart_summary)
+                                )
                             )
 
-                            ax.pie(
-                                summary["Count"],
-                                labels=summary[
-                                    "Bean Variety"
-                                ],
-                                autopct="%1.1f%%",
-                                colors=pie_colors
-                            )
-
+                            ax.set_xlabel("Number of Records")
                             ax.set_title(
-                                "Predicted Class Distribution"
+                                "Predicted Bean Class Distribution"
                             )
+
+                            for i, value in enumerate(
+                                chart_summary["Number of Records"]
+                            ):
+                                ax.text(
+                                    value,
+                                    i,
+                                    f" {int(value)}",
+                                    va="center",
+                                    fontsize=9
+                                )
 
                             plt.tight_layout()
                             st.pyplot(fig)
@@ -1307,6 +1340,12 @@ elif page == "📈 Model Comparison":
 
         st.divider()
 
+        st.caption(
+            "All reported metrics are taken from the saved model-evaluation "
+            "results. The confusion matrices are generated from the held-out "
+            "test data using the same saved StandardScaler and label encoder."
+        )
+
         tab1, tab2, tab3, tab4 = st.tabs([
             "📋 Metrics Table",
             "📊 Bar Chart",
@@ -1352,7 +1391,7 @@ elif page == "📈 Model Comparison":
             )
 
             ax.set_ylim(
-                0.85,
+                0.0,
                 1.0
             )
 
@@ -1462,128 +1501,168 @@ elif page == "📈 Model Comparison":
         with tab4:
 
             st.markdown(
-                "**Confusion Matrix per Model**"
+                "**Confusion Matrix by Model**"
+            )
+
+            st.caption(
+                "Select a model to view its confusion matrix and "
+                "classification report on the held-out test set."
             )
 
             selected_cm_model = st.selectbox(
-                "Select Model for Confusion Matrix",
+                "Select Model",
                 list(models.keys()),
                 key="cm_model"
             )
 
-            test_data = pd.read_csv(
-                "output/test_data.csv"
-            )
-
-            test_data = test_data.replace(
-                [np.inf, -np.inf],
-                np.nan
-            )
-
-            # Make sure all test columns are numeric
-            test_data[FEATURES] = test_data[
-                FEATURES
-            ].apply(
-                pd.to_numeric,
-                errors="coerce"
-            )
-
-            test_data[TARGET] = pd.to_numeric(
-                test_data[TARGET],
-                errors="coerce"
-            )
-
-            test_data = test_data.dropna(
-                subset=FEATURES + [TARGET]
-            ).copy()
-
-            if test_data.empty:
-
-                st.error(
-                    "No valid test records are available "
-                    "for the confusion matrix."
+            try:
+                test_data = pd.read_csv(
+                    "output/test_data.csv"
                 )
 
-            else:
+                test_data = test_data.replace(
+                    [np.inf, -np.inf],
+                    np.nan
+                )
 
-                X_test = test_data[
+                # Convert all feature columns to numeric values.
+                test_data[FEATURES] = test_data[
                     FEATURES
-                ]
-
-                y_test = test_data[
-                    TARGET
-                ].astype(int)
-
-                y_pred = models[
-                    selected_cm_model
-                ].predict(X_test)
-
-                labels = np.arange(
-                    len(encoder.classes_)
+                ].apply(
+                    pd.to_numeric,
+                    errors="coerce"
                 )
 
-                cm = confusion_matrix(
-                    y_test,
-                    y_pred,
-                    labels=labels
-                )
+                # Validate the target column.
+                if TARGET not in test_data.columns:
+                    st.error(
+                        f"The test-data file does not contain the "
+                        f"required target column '{TARGET}'."
+                    )
+                else:
+                    test_data = test_data.dropna(
+                        subset=FEATURES + [TARGET]
+                    ).copy()
 
-                fig_cm, ax_cm = plt.subplots(
-                    figsize=(8, 6)
-                )
+                    if test_data.empty:
+                        st.error(
+                            "No valid test records are available "
+                            "for the confusion matrix."
+                        )
+                    else:
+                        X_test = test_data[FEATURES]
 
-                sns.heatmap(
-                    cm,
-                    annot=True,
-                    fmt="d",
-                    cmap="Blues",
-                    xticklabels=encoder.classes_,
-                    yticklabels=encoder.classes_,
-                    ax=ax_cm
-                )
+                        # The saved models were trained on scaled features.
+                        X_test_scaled = scaler.transform(X_test)
 
-                ax_cm.set_xlabel(
-                    "Predicted"
-                )
+                        # Convert the actual target into the same encoded
+                        # label space used by the saved models.
+                        y_raw = test_data[TARGET]
 
-                ax_cm.set_ylabel(
-                    "Actual"
-                )
+                        if pd.api.types.is_numeric_dtype(y_raw):
+                            y_test = y_raw.astype(int).to_numpy()
+                        else:
+                            y_test = encoder.transform(
+                                y_raw.astype(str)
+                            )
 
-                ax_cm.set_title(
-                    f"Confusion Matrix - "
-                    f"{selected_cm_model}"
-                )
+                        model = models[selected_cm_model]
 
-                plt.tight_layout()
+                        # IMPORTANT: predict using the scaled test data.
+                        y_pred_raw = model.predict(
+                            X_test_scaled
+                        )
 
-                st.pyplot(fig_cm)
-                plt.close(fig_cm)
+                        # Robustly handle either encoded or string predictions.
+                        if pd.api.types.is_numeric_dtype(
+                            pd.Series(y_pred_raw)
+                        ):
+                            y_pred = np.asarray(
+                                y_pred_raw,
+                                dtype=int
+                            )
+                        else:
+                            y_pred = encoder.transform(
+                                pd.Series(
+                                    y_pred_raw
+                                ).astype(str)
+                            )
 
-                st.markdown(
-                    "**Classification Report**"
-                )
+                        labels = np.arange(
+                            len(encoder.classes_)
+                        )
 
-                report = classification_report(
-                    y_test,
-                    y_pred,
-                    labels=labels,
-                    target_names=encoder.classes_,
-                    output_dict=True,
-                    zero_division=0
-                )
+                        cm = confusion_matrix(
+                            y_test,
+                            y_pred,
+                            labels=labels
+                        )
 
-                report_df = pd.DataFrame(
-                    report
-                ).transpose()
+                        fig_cm, ax_cm = plt.subplots(
+                            figsize=(9, 7)
+                        )
 
-                st.dataframe(
-                    report_df.style
-                    .format("{:.4f}")
-                    .background_gradient(
-                        cmap="Greens"
-                    ),
-                    use_container_width=True
+                        sns.heatmap(
+                            cm,
+                            annot=True,
+                            fmt="d",
+                            cmap="Blues",
+                            linewidths=0.5,
+                            linecolor="white",
+                            xticklabels=encoder.classes_,
+                            yticklabels=encoder.classes_,
+                            ax=ax_cm
+                        )
+
+                        ax_cm.set_xlabel(
+                            "Predicted Bean Class"
+                        )
+
+                        ax_cm.set_ylabel(
+                            "Actual Bean Class"
+                        )
+
+                        ax_cm.set_title(
+                            f"Confusion Matrix — {selected_cm_model}"
+                        )
+
+                        plt.tight_layout()
+
+                        st.pyplot(fig_cm)
+                        plt.close(fig_cm)
+
+                        # Classification report using exactly the same
+                        # predictions as the confusion matrix.
+                        report = classification_report(
+                            y_test,
+                            y_pred,
+                            labels=labels,
+                            target_names=encoder.classes_,
+                            output_dict=True,
+                            zero_division=0
+                        )
+
+                        report_df = pd.DataFrame(
+                            report
+                        ).transpose()
+
+                        st.markdown(
+                            "**Classification Report**"
+                        )
+
+                        st.dataframe(
+                            report_df.style
+                            .format("{:.4f}")
+                            .background_gradient(
+                                cmap="Greens"
+                            ),
+                            use_container_width=True
+                        )
+
+            except Exception as cm_error:
+                st.error(
+                    "Unable to generate the confusion matrix: "
+                    f"{cm_error}"
                 )
 
     except Exception as e:
@@ -1692,6 +1771,13 @@ elif page == "🌳 Feature Importance":
 
     st.divider()
 
+    st.info(
+        "Feature importance is based on the trained Random Forest model. "
+        "Higher scores indicate features that contributed more to the "
+        "model's impurity-based split decisions; they should not be "
+        "interpreted as causal effects."
+    )
+
     importance["Cumulative"] = (
         importance["Importance"].cumsum()
     )
@@ -1760,7 +1846,7 @@ elif page == "ℹ️ About":
         st.markdown("""
 ### 🌱 Dry Bean Classification
 
-Developed as part of **BITS Pilani WILP – AIMLCZG565 Machine Learning Assignment 2**.
+Developed as part of **BITS Pilani WILP – AIMLCZG565 Machine Learning, Assignment 2**.
 
 **Dataset:** Dry Bean Dataset (UCI ML Repository)
 
@@ -1771,8 +1857,8 @@ Developed as part of **BITS Pilani WILP – AIMLCZG565 Machine Learning Assignme
 **Models:**
 Logistic Regression, Decision Tree, KNN, Naive Bayes, Random Forest
 
-**Metrics:**
-Accuracy, Precision, Recall, F1, MCC, ROC-AUC
+**Evaluation Metrics:**
+Accuracy, Precision, Recall, F1 Score, MCC, and ROC-AUC
 """)
 
     with col2:
