@@ -146,9 +146,9 @@ st.sidebar.caption("Application version: Final")
 st.sidebar.divider()
 
 user_name = st.sidebar.text_input(
-    "👤 Your Name",
+    "👤 Your Name (Optional)",
     value=st.session_state.user_name,
-    placeholder="Enter your name"
+    placeholder="Enter your name (optional)"
 )
 
 st.session_state.user_name = user_name.strip()
@@ -157,6 +157,8 @@ if st.session_state.user_name:
     st.sidebar.success(
         f"Welcome, {st.session_state.user_name}!"
     )
+else:
+    st.sidebar.success("Welcome!")
 
 st.sidebar.caption(f"📅 {current_date}")
 st.sidebar.caption(f"🕐 {current_time}")
@@ -405,14 +407,14 @@ if page == "🏠 Home":
     st.title("🌱 Dry Bean Classification System")
 
     if st.session_state.user_name:
-        display_name = st.session_state.user_name
+        welcome_heading = f"👋 Welcome, {st.session_state.user_name}!"
     else:
-        display_name = "there"
+        welcome_heading = "👋 Welcome!"
 
     st.markdown(
         f"""
         <div class="welcome-box">
-            <h2>👋 Welcome, {display_name}!</h2>
+            <h2>{welcome_heading}</h2>
             <p>Interactive Dry Bean Classification application</p>
             <p>📅 {current_date} &nbsp; | &nbsp; 🕐 {current_time}</p>
         </div>
