@@ -142,6 +142,7 @@ st.sidebar.caption(
     "AIMLCZG565 – Machine Learning | Assignment 2"
 )
 st.sidebar.caption("Application version: Final")
+st.sidebar.caption("Lab-compatible build")
 
 st.sidebar.divider()
 
@@ -675,10 +676,12 @@ elif page == "📊 Dataset Explorer":
 
         st.markdown("**Summary Statistics**")
 
+        # Avoid pandas Styler here because some lab environments do not
+        # bundle the optional Jinja2 dependency required by DataFrame.style.
+        summary_stats = df.describe().T.round(4)
+
         st.dataframe(
-            df.describe().T.style.background_gradient(
-                cmap="Blues"
-            ),
+            summary_stats,
             use_container_width=True
         )
 
@@ -959,16 +962,18 @@ elif page == "🤖 Single Prediction":
                         "**All Prediction Probabilities**"
                     )
 
+                    # Display percentages as text so the app does not
+                    # depend on pandas Styler/Jinja2.
+                    probability_display = prob_df.copy()
+                    probability_display["Probability"] = (
+                        probability_display["Probability"]
+                        .map(lambda x: f"{x:.2%}")
+                    )
+
                     st.dataframe(
-                        prob_df.style
-                        .format({
-                            "Probability": "{:.2%}"
-                        })
-                        .background_gradient(
-                            subset=["Probability"],
-                            cmap="Greens"
-                        ),
-                        use_container_width=True
+                        probability_display,
+                        use_container_width=True,
+                        hide_index=True
                     )
 
                 with col2:
@@ -1361,17 +1366,15 @@ elif page == "📈 Model Comparison":
                 ["Model"] + metrics
             ].copy()
 
+            # Round values for presentation instead of using pandas Styler.
+            # This avoids the Jinja2 dependency in the BITS Virtual Lab.
+            display_comparison = display_comparison.copy()
+            display_comparison[metrics] = display_comparison[metrics].round(4)
+
             st.dataframe(
-                display_comparison.style
-                .background_gradient(
-                    subset=metrics,
-                    cmap="Greens"
-                )
-                .format({
-                    metric: "{:.4f}"
-                    for metric in metrics
-                }),
-                use_container_width=True
+                display_comparison,
+                use_container_width=True,
+                hide_index=True
             )
 
         with tab2:
@@ -1652,12 +1655,10 @@ elif page == "📈 Model Comparison":
                             "**Classification Report**"
                         )
 
+                        report_display = report_df.round(4)
+
                         st.dataframe(
-                            report_df.style
-                            .format("{:.4f}")
-                            .background_gradient(
-                                cmap="Greens"
-                            ),
+                            report_display,
                             use_container_width=True
                         )
 
@@ -1715,23 +1716,25 @@ elif page == "🌳 Feature Importance":
             "**Feature Importance Scores**"
         )
 
-        st.dataframe(
+        importance_display = (
             importance[
                 [
                     "Rank",
                     "Feature",
                     "Importance"
                 ]
-            ].head(top_n)
-            .style
-            .format({
-                "Importance": "{:.4f}"
-            })
-            .background_gradient(
-                subset=["Importance"],
-                cmap="Greens"
-            ),
-            use_container_width=True
+            ]
+            .head(top_n)
+            .copy()
+        )
+        importance_display["Importance"] = (
+            importance_display["Importance"].round(4)
+        )
+
+        st.dataframe(
+            importance_display,
+            use_container_width=True,
+            hide_index=True
         )
 
     with col2:
