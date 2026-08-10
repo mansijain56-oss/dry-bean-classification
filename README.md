@@ -10,6 +10,17 @@
 
 ---
 
+## 🔗 Quick Links
+
+- 🌐 **Live Streamlit Application:** https://dry-bean-classification-6paakea9eqlqmwkdm5dgje.streamlit.app/
+- 💻 **GitHub Repository:** https://github.com/mansijain56-oss/dry-bean-classification
+- 📊 **UCI Dry Bean Dataset:** https://archive.ics.uci.edu/dataset/602/dry+bean
+- 📚 **Dataset Research Paper:** https://doi.org/10.1016/j.compag.2020.105507
+- 📘 **Scikit-learn Documentation:** https://scikit-learn.org/stable/
+- 🚀 **Streamlit Documentation:** https://docs.streamlit.io/
+
+---
+
 ## 1. Project Overview
 
 This project implements an end-to-end multiclass machine learning solution for classifying dry bean varieties using morphological and geometric features.
@@ -55,38 +66,15 @@ The problem is formulated as a multiclass supervised classification task.
 
 ### Bean Classes
 
-- Seker
-- Barbunya
-- Bombay
-- Cali
-- Dermason
-- Horoz
-- Sira
+Seker, Barbunya, Bombay, Cali, Dermason, Horoz, Sira
 
 ### Features
 
-- Area
-- Perimeter
-- MajorAxisLength
-- MinorAxisLength
-- AspectRation
-- Eccentricity
-- ConvexArea
-- EquivDiameter
-- Extent
-- Solidity
-- roundness
-- Compactness
-- ShapeFactor1
-- ShapeFactor2
-- ShapeFactor3
-- ShapeFactor4
+Area, Perimeter, MajorAxisLength, MinorAxisLength, AspectRation, Eccentricity, ConvexArea, EquivDiameter, Extent, Solidity, roundness, Compactness, ShapeFactor1, ShapeFactor2, ShapeFactor3, ShapeFactor4
 
 ---
 
 ## 4. Data Preprocessing
-
-The following preprocessing steps were performed:
 
 1. Dataset quality checks
 2. Missing-value and duplicate checks
@@ -100,16 +88,7 @@ The following preprocessing steps were performed:
 
 ## 5. Exploratory Data Analysis
 
-The project includes:
-
-- Dataset structure and summary statistics
-- Class distribution
-- Numerical feature distributions
-- Boxplots and violin plots
-- Correlation analysis
-- Feature relationships
-- Outlier analysis
-- Class-wise feature behaviour
+The project includes dataset structure and summary statistics, class distribution, numerical feature distributions, boxplots and violin plots, correlation analysis, feature relationships, outlier analysis and class-wise feature behaviour.
 
 The detailed EDA is available in the project notebooks.
 
@@ -131,8 +110,6 @@ Hyperparameter tuning was performed using GridSearchCV where applicable.
 
 ## 7. Evaluation Metrics
 
-The models were evaluated using:
-
 - Accuracy
 - Precision
 - Recall
@@ -148,11 +125,9 @@ Confusion matrices and classification reports are also generated.
 
 ## 8. Model Comparison
 
-The final model comparison results are available in:
+Final results are available in:
 
-```text
-output/model_comparison.csv
-```
+`output/model_comparison.csv`
 
 The Streamlit application provides:
 
@@ -171,20 +146,11 @@ The confusion matrix updates according to the selected model.
 
 Feature importance is calculated using the trained Random Forest model.
 
-The results are available in:
+Results are available in:
 
-```text
-output/feature_importance.csv
-```
+`output/feature_importance.csv`
 
-The Streamlit application provides:
-
-- Feature importance ranking
-- Importance scores
-- Feature importance visualization
-- Cumulative feature importance
-- 80% cumulative importance reference
-- Top three important features
+The application provides feature importance ranking, scores, visualization, cumulative importance, an 80% cumulative-importance reference and the top three important features.
 
 Feature importance represents the model's contribution to impurity-based split decisions and should not be interpreted as causal influence.
 
@@ -192,28 +158,28 @@ Feature importance represents the model's contribution to impurity-based split d
 
 ## 10. Streamlit Application
 
-The application contains the following sections:
+The application contains:
 
 ### 🏠 Home
-Project overview, dataset summary, model summary and workflow.
+Project overview, dataset summary, model summary, objectives and workflow.
 
 ### 📊 Dataset Explorer
 Dataset preview, statistics, class distribution, correlation analysis, feature distributions and data-quality information.
 
 ### 🤖 Single Prediction
-Users can enter the 16 feature values, select a trained model, generate a predicted bean class, view prediction confidence, top-3 predicted classes and class probabilities.
+Enter the 16 feature values, select a trained model and generate the predicted bean class, confidence, top-3 predicted classes and class probabilities.
 
 ### 📁 Batch Prediction
-Users can upload CSV data, validate the required feature columns, generate predictions for multiple records, view prediction summaries and download results.
+Upload CSV data, validate the required feature columns, generate predictions, view the prediction summary and predicted class distribution.
 
 ### 📈 Model Comparison
-Provides evaluation metrics, comparison table, bar chart, radar chart, model-specific confusion matrix and classification report.
+Interactive metrics table, best-model indicators, bar chart, radar chart, model-specific confusion matrix and classification report.
 
 ### 🌳 Feature Importance
-Provides Random Forest feature importance analysis and visualizations.
+Random Forest feature importance ranking and visualizations.
 
 ### ℹ️ About
-Provides project, student, methodology and technology information.
+Project, student, methodology and technology information.
 
 ---
 
@@ -267,13 +233,13 @@ dry-bean-classification/
 
 ## 13. Requirements and Local Execution
 
-Install the required packages:
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Run the Streamlit application locally:
+Run the Streamlit application:
 
 ```bash
 streamlit run app.py
@@ -291,6 +257,8 @@ https://dry-bean-classification-6paakea9eqlqmwkdm5dgje.streamlit.app/
 
 https://github.com/mansijain56-oss/dry-bean-classification
 
+The repository contains the Streamlit application, notebooks, trained models, preprocessing objects, output files and requirements file.
+
 ---
 
 ## 15. Technologies Used
@@ -304,6 +272,7 @@ https://github.com/mansijain56-oss/dry-bean-classification
 - Joblib
 - Streamlit
 - Jupyter Notebook
+- OpenPyXL
 
 ---
 
@@ -343,7 +312,19 @@ Streamlit Deployment
 
 ---
 
-## 17. Conclusion
+## 17. Results Summary
+
+The final application compares five classification models using Accuracy, Precision, Recall, F1 Score, MCC and ROC-AUC.
+
+The saved model evaluation results are available in:
+
+`output/model_comparison.csv`
+
+The application provides an interactive comparison of the models and allows selection of a model to inspect its confusion matrix and classification report.
+
+---
+
+## 18. Conclusion
 
 This project demonstrates an end-to-end machine learning workflow for multiclass dry bean classification.
 
@@ -351,11 +332,44 @@ Five supervised learning algorithms were implemented and evaluated using multipl
 
 The trained models and preprocessing objects were persisted and integrated into an interactive Streamlit application supporting both single-record and batch predictions.
 
+The final application is deployed through Streamlit Community Cloud and the complete project is maintained in the GitHub repository.
+
 ---
 
-## 18. References
+## 19. References
 
-1. UCI Machine Learning Repository – Dry Bean Dataset
-2. Scikit-learn Documentation
-3. Streamlit Documentation
-4. BITS Pilani WILP – AIMLCZG565 Machine Learning Assignment 2
+1. **UCI Machine Learning Repository – Dry Bean Dataset**  
+   https://archive.ics.uci.edu/dataset/602/dry+bean
+
+2. **Koklu, M. and Ozkan, I.A. (2020). Multiclass Classification of Dry Beans Using Computer Vision and Machine Learning Techniques.**  
+   https://doi.org/10.1016/j.compag.2020.105507
+
+3. **Scikit-learn Documentation**  
+   https://scikit-learn.org/stable/
+
+4. **Streamlit Documentation**  
+   https://docs.streamlit.io/
+
+5. **BITS Pilani WILP – AIMLCZG565 Machine Learning Assignment 2**
+
+---
+
+## Student Details
+
+| Field | Details |
+|---|---|
+| Name | Mansi Jain |
+| Student ID | 2025AC05151 |
+| Course | AIMLCZG565 – Machine Learning |
+| Programme | M.Tech AI & ML |
+| University | BITS Pilani WILP |
+
+---
+
+## Final Project Links
+
+**Live App:** https://dry-bean-classification-6paakea9eqlqmwkdm5dgje.streamlit.app/
+
+**GitHub:** https://github.com/mansijain56-oss/dry-bean-classification
+
+**UCI Dataset:** https://archive.ics.uci.edu/dataset/602/dry+bean
